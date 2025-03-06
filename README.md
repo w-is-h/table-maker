@@ -19,6 +19,15 @@ table-maker
 - `images/table.png`: Visual representation of the generated table
 - `json/table.json`: Table data as JSON
 
+## Architecture
+
+The project is structured with separate components for:
+
+- `TableData`: Represents the table content and headers
+- `TableDimensions`: Handles layout and grid structure
+- `RandomDataGenerator`: Generates random content data
+- `TableVisualizer`: Renders visual representation of tables
+
 ## Development
 
 Run tests:
