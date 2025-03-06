@@ -20,7 +20,8 @@ def test_parse_args():
         "12",
         "--output",
         "/tmp/test",
-        "--normal",
+        "--style",
+        "uniform",
         "--margin",
         "15",
         "--wrap-mode",
@@ -36,19 +37,16 @@ def test_parse_args():
     assert args.max_rows == 10
     assert args.max_columns == 12
     assert args.output == "/tmp/test"
-    assert args.normal is True
-    assert args.random is False
+    assert args.style == "uniform"
     assert args.margin == 15
     assert args.wrap_mode == "char"
 
     # Check that default values are set
-    assert args.normal_probability == 0.5
-    assert args.empty_row_probability == 0.3
-    assert args.empty_column_probability == 0.3
-    assert args.empty_cell_probability == 0.2
+    assert args.sparsity == 0.2
+    assert not args.allow_empty_rows
+    assert not args.allow_empty_columns
     assert args.large_number_probability == 0.05
-    assert args.column_header_probability == 0.0
-    assert args.row_header_probability == 0.0
+    assert args.headers == "none"
 
 
 def test_main_function(temp_output_dir):
@@ -67,7 +65,8 @@ def test_main_function(temp_output_dir):
         "3",
         "--output",
         str(temp_output_dir),
-        "--normal",  # Make the output deterministic
+        "--style",
+        "uniform",  # Make the output deterministic
     ]
 
     with patch.object(sys, "argv", ["table-maker"] + test_args):
@@ -84,9 +83,9 @@ def test_main_function(temp_output_dir):
     assert len(list(json_dir.glob("*.json"))) == 1
 
 
-def test_main_with_normal_and_random_flags(temp_output_dir):
-    """Test that the main function handles conflicting flags gracefully."""
-    # Test with both normal and random flags
+def test_style_options(temp_output_dir):
+    """Test that different style options work correctly."""
+    # Test with random style
     test_args = [
         "--count",
         "1",
@@ -100,15 +99,17 @@ def test_main_with_normal_and_random_flags(temp_output_dir):
         "3",
         "--output",
         str(temp_output_dir),
-        "--normal",
-        "--random",  # Conflicting flag
+        "--style",
+        "random",
+        "--sparsity",
+        "0.3",
     ]
 
     # We're not checking stdout, just making sure it runs without errors
     with patch.object(sys, "argv", ["table-maker"] + test_args):
         main()
 
-    # Files should still be created
+    # Files should be created
     images_dir = temp_output_dir / "images"
     json_dir = temp_output_dir / "json"
     assert images_dir.exists()
