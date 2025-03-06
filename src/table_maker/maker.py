@@ -349,6 +349,7 @@ def generate_table(
     max_columns: int = 40,
     output_filename: str = "table",
     is_normal: Optional[bool] = None,
+    normal_probability: float = 0.5,
     margin: int = 10,
     empty_row_probability: float = 0.3,
     empty_column_probability: float = 0.3,
@@ -370,7 +371,8 @@ def generate_table(
         output_filename: Base filename for the output files (without extension)
         is_normal: If True, generates a regular table with uniform cells and all solid lines.
                    If False, generates a table with varied cells and mixed line styles.
-                   If None (default), randomly decides with 50% probability.
+                   If None (default), randomly decides based on normal_probability.
+        normal_probability: Probability of generating a normal table when is_normal is None (0.0-1.0)
         margin: Margin size in pixels around the table
         empty_row_probability: Probability of each row being empty (when not normal)
         empty_column_probability: Probability of creating an empty column (when not normal)
@@ -392,7 +394,7 @@ def generate_table(
 
     # Determine if this table is normal
     if is_normal is None:
-        is_normal = random.random() < 0.5
+        is_normal = random.random() < normal_probability
 
     # Generate sizes: uniform for normal, varied for modified
     column_widths = generate_cell_sizes(
@@ -590,6 +592,7 @@ def generate_tables(
     max_rows: int = 15,
     max_columns: int = 40,
     is_normal: Optional[bool] = None,
+    normal_probability: float = 0.5,
     margin: int = 10,
     empty_row_probability: float = 0.3,
     empty_column_probability: float = 0.3,
@@ -610,7 +613,8 @@ def generate_tables(
         max_columns: Maximum number of columns in each table
         is_normal: If True, generates regular tables with uniform cells and solid lines.
                    If False, generates tables with varied cells and mixed line styles.
-                   If None (default), randomly decides for each table with 50% probability.
+                   If None (default), randomly decides for each table based on normal_probability.
+        normal_probability: Probability of generating a normal table when is_normal is None (0.0-1.0)
         margin: Margin size in pixels around each table
         empty_row_probability: Probability of each row being empty (when not normal)
         empty_column_probability: Probability of creating an empty column (when not normal)
@@ -655,6 +659,7 @@ def generate_tables(
             max_columns=max_columns,
             output_filename=filename,
             is_normal=is_normal,
+            normal_probability=normal_probability,
             margin=margin,
             empty_row_probability=empty_row_probability,
             empty_column_probability=empty_column_probability,
@@ -722,6 +727,12 @@ def main() -> None:
         help="Generate random tables with varied cells and mixed line styles"
     )
     parser.add_argument(
+        "--normal-probability",
+        type=float,
+        default=0.5,
+        help="Probability of generating normal tables when neither --normal nor --random is specified (default: 0.5)"
+    )
+    parser.add_argument(
         "--margin",
         type=int,
         default=10,
@@ -776,13 +787,18 @@ def main() -> None:
     output_dir = Path(args.output) if args.output else None
     
     # Handle normal/random options
-    is_normal = None  # Default: random 50/50
+    is_normal = None  # Default: Use normal_probability
     if args.normal and args.random:
-        print("Warning: Both --normal and --random specified; using default random behavior")
+        print("Warning: Both --normal and --random specified; using normal_probability for randomization")
     elif args.normal:
         is_normal = True
     elif args.random:
         is_normal = False
+        
+    # Validate normal_probability is between 0 and 1
+    if not 0 <= args.normal_probability <= 1:
+        print(f"Warning: normal_probability ({args.normal_probability}) should be between 0 and 1; using 0.5")
+        args.normal_probability = 0.5
     
     results = generate_tables(
         count=args.count,
@@ -792,6 +808,7 @@ def main() -> None:
         max_columns=args.max_columns,
         output_dir=output_dir,
         is_normal=is_normal,
+        normal_probability=args.normal_probability,
         margin=args.margin,
         empty_row_probability=args.empty_row_probability,
         empty_column_probability=args.empty_column_probability,
