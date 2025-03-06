@@ -3,37 +3,32 @@ import random
 from itertools import accumulate
 from faker import Faker
 import json
-import argparse
-import shutil
 from pathlib import Path
 from typing import List, Tuple, Optional, Union, Any, Dict
 
 
 # Path configuration constants
-OUTPUT_DIRS = {
-    "images": "images",
-    "json": "json"
-}
+OUTPUT_DIRS = {"images": "images", "json": "json"}
 
-FILE_EXTENSIONS = {
-    "image": ".png",
-    "json": ".json"
-}
+FILE_EXTENSIONS = {"image": ".png", "json": ".json"}
 
 
 def generate_table_dimensions(
-    margin: int, min_rows: int = 1, min_columns: int = 1, 
-    max_rows: int = 15, max_columns: int = 40
+    margin: int,
+    min_rows: int = 1,
+    min_columns: int = 1,
+    max_rows: int = 15,
+    max_columns: int = 40,
 ) -> Tuple[int, int, int, int]:
     """Generate random table dimensions within constraints, accounting for margins.
-    
+
     Args:
         margin: Margin size in pixels
         min_rows: Minimum number of rows to generate
         min_columns: Minimum number of columns to generate
         max_rows: Maximum number of rows to generate
         max_columns: Maximum number of columns to generate
-        
+
     Returns:
         Tuple of (rows, columns, total_width, total_height)
     """
@@ -142,19 +137,19 @@ def draw_grid(
 
 
 def generate_cell_content(
-    rows: int, 
-    columns: int, 
-    fake: Faker, 
+    rows: int,
+    columns: int,
+    fake: Faker,
     is_normal: bool,
     empty_row_probability: float = 0.3,
     empty_column_probability: float = 0.3,
     empty_cell_probability: float = 0.2,
     large_number_probability: float = 0.05,
     column_header_probability: float = 0.0,
-    row_header_probability: float = 0.0
+    row_header_probability: float = 0.0,
 ) -> Dict[str, Any]:
     """Generate diverse cell content using Faker.
-    
+
     Args:
         rows: Number of rows in the table
         columns: Number of columns in the table
@@ -166,7 +161,7 @@ def generate_cell_content(
         large_number_probability: Probability of generating very large numbers (15-30 digits)
         column_header_probability: Probability of generating column headers
         row_header_probability: Probability of generating row headers
-    
+
     Returns:
         Dictionary with keys:
         - "data": 2D list of cell content (main table body)
@@ -179,11 +174,11 @@ def generate_cell_content(
     # Determine if table has headers
     has_column_headers = random.random() < column_header_probability
     has_row_headers = random.random() < row_header_probability
-    
+
     # Adjust row/column count for data body (excluding headers)
     data_rows = rows - (1 if has_column_headers else 0)
     data_columns = columns - (1 if has_row_headers else 0)
-    
+
     # Initialize the result structure
     result = {
         "data": [[None for _ in range(data_columns)] for _ in range(data_rows)],
@@ -191,46 +186,48 @@ def generate_cell_content(
         "has_row_headers": has_row_headers,
         "column_headers": [None] * data_columns if has_column_headers else [],
         "row_headers": [None] * data_rows if has_row_headers else [],
-        "corner_header": "ID" if has_column_headers and has_row_headers else None
+        "corner_header": "ID" if has_column_headers and has_row_headers else None,
     }
-    
+
     # Determine empty rows and columns
     empty_rows: List[bool] = [False] * data_rows
     empty_column: Optional[int] = None
-    
+
     if not is_normal:
         # Each row has independent chance to be empty
         for i in range(data_rows):
             if random.random() < empty_row_probability:
                 empty_rows[i] = True
-        
+
         # Still using original logic for empty column
         if random.random() < empty_column_probability:
             empty_column = random.randint(0, data_columns - 1)
-    
+
     # Generate column headers if needed
     if has_column_headers:
         for j in range(data_columns):
             # Skip empty columns
             if j == empty_column:
                 continue
-                
+
             # Generate a header (always text)
             header_options = [
                 fake.word().capitalize(),
-                " ".join([word.capitalize() for word in fake.words(nb=random.randint(1, 2))]),
+                " ".join(
+                    [word.capitalize() for word in fake.words(nb=random.randint(1, 2))]
+                ),
                 fake.last_name(),
-                fake.currency_name()
+                fake.currency_name(),
             ]
             result["column_headers"][j] = random.choice(header_options)
-    
+
     # Generate row headers if needed
     if has_row_headers:
         for i in range(data_rows):
             # Skip empty rows
             if empty_rows[i]:
                 continue
-                
+
             # Generate a header (always text or numbers)
             if random.random() < 0.7:
                 # Text header
@@ -238,20 +235,20 @@ def generate_cell_content(
                     fake.word().capitalize(),
                     fake.last_name(),
                     fake.first_name(),
-                    fake.country()
+                    fake.country(),
                 ]
                 result["row_headers"][i] = random.choice(header_options)
             else:
                 # Numeric header (like row numbers)
                 result["row_headers"][i] = str(i)
-    
+
     # Generate main table data
     for i in range(data_rows):
         for j in range(data_columns):
             # Skip if should be empty
             if empty_rows[i] or j == empty_column:
                 continue
-                
+
             if random.random() < empty_cell_probability:
                 continue  # Leave as None
             else:
@@ -260,7 +257,9 @@ def generate_cell_content(
                     if random.random() < large_number_probability:
                         # Generate large integers of varying lengths
                         digit_count = random.choice([15, 20, 25, 30])
-                        text = ''.join([str(random.randint(0, 9)) for _ in range(digit_count)])
+                        text = "".join(
+                            [str(random.randint(0, 9)) for _ in range(digit_count)]
+                        )
                     elif random.random() < 0.5:
                         text = str(fake.random_int(min=0, max=999))
                     else:
@@ -273,13 +272,15 @@ def generate_cell_content(
                     else:
                         text = " ".join(fake.words(nb=random.randint(1, 5)))
                 result["data"][i][j] = text
-                
+
     return result
 
 
-def wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int, wrap_mode: str = "word") -> List[str]:
+def wrap_text(
+    text: str, font: ImageFont.FreeTypeFont, max_width: int, wrap_mode: str = "word"
+) -> List[str]:
     """Wrap text to fit within a maximum width.
-    
+
     Args:
         text: The text to wrap
         font: Font object for text measurement
@@ -288,14 +289,14 @@ def wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int, wrap_mode
             - "word": Wrap at word boundaries (standard)
             - "none": No wrapping, text may extend beyond cell
             - "char": Break words if necessary to fit within width
-            
+
     Returns:
         List of lines after wrapping
     """
     if wrap_mode == "none":
         # No wrapping, return single line
         return [text]
-    
+
     elif wrap_mode == "word":
         # Standard word wrapping
         words = text.split()
@@ -315,13 +316,13 @@ def wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int, wrap_mode
         if current_line:
             lines.append(" ".join(current_line))
         return lines
-    
+
     elif wrap_mode == "char":
         # Character-based wrapping (break words if needed)
         lines = []
         current_line = ""
         current_width = 0.0
-        
+
         for char in text:
             char_width = font.getlength(char)
             if current_width + char_width <= max_width:
@@ -332,11 +333,11 @@ def wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int, wrap_mode
                     lines.append(current_line)
                 current_line = char
                 current_width = char_width
-        
+
         if current_line:  # Add the last line if not empty
             lines.append(current_line)
         return lines
-    
+
     # Default to word wrapping for any other value
     return wrap_text(text, font, max_width, "word")
 
@@ -358,7 +359,7 @@ def generate_table(
     column_header_probability: float = 0.0,
     row_header_probability: float = 0.0,
     wrap_mode: str = "word",
-    output_paths: Optional[Dict[str, Path]] = None
+    output_paths: Optional[Dict[str, Path]] = None,
 ) -> Tuple[Path, Path]:
     """Generate and save a table image and JSON data.
 
@@ -388,8 +389,11 @@ def generate_table(
     """
     fake = Faker()
     rows, columns, total_width, total_height = generate_table_dimensions(
-        margin, min_rows=min_rows, min_columns=min_columns, 
-        max_rows=max_rows, max_columns=max_columns
+        margin,
+        min_rows=min_rows,
+        min_columns=min_columns,
+        max_rows=max_rows,
+        max_columns=max_columns,
     )
 
     # Determine if this table is normal
@@ -423,18 +427,18 @@ def generate_table(
 
     # Add cell content
     table_data = generate_cell_content(
-        rows=rows, 
-        columns=columns, 
-        fake=fake, 
+        rows=rows,
+        columns=columns,
+        fake=fake,
         is_normal=is_normal,
         empty_row_probability=empty_row_probability,
         empty_column_probability=empty_column_probability,
         empty_cell_probability=empty_cell_probability,
         large_number_probability=large_number_probability,
         column_header_probability=column_header_probability,
-        row_header_probability=row_header_probability
+        row_header_probability=row_header_probability,
     )
-    
+
     # Extract values for easier reference
     has_column_headers = table_data["has_column_headers"]
     has_row_headers = table_data["has_row_headers"]
@@ -442,40 +446,44 @@ def generate_table(
     column_headers = table_data["column_headers"]
     row_headers = table_data["row_headers"]
     corner_header = table_data["corner_header"]
-    
+
     # For rendering, we need to track current position
     padding = 5
-    
+
     # Try to get a bold font for headers
     try:
         header_font = ImageFont.truetype("Helvetica-Bold.ttf", font_size)
     except IOError:
         try:
-            header_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", font_size, index=1)
+            header_font = ImageFont.truetype(
+                "/System/Library/Fonts/Helvetica.ttc", font_size, index=1
+            )
         except IOError:
             # Fall back to regular font if bold isn't available
             header_font = font
-    
+
     # Draw corner header if both column and row headers exist
     if has_column_headers and has_row_headers and corner_header is not None:
         left = margin
         top = margin
         cell_width = column_widths[0]
         cell_height = row_heights[0]
-        
-        wrapped_text = wrap_text(corner_header, header_font, cell_width - 2 * padding, wrap_mode)
+
+        wrapped_text = wrap_text(
+            corner_header, header_font, cell_width - 2 * padding, wrap_mode
+        )
         ascent, descent = header_font.getmetrics()
         line_height = ascent + descent
         max_lines = (cell_height - 2 * padding) // line_height
         truncated_text = wrapped_text[:max_lines]
-        
+
         # Center the corner header
         for k, line in enumerate(truncated_text):
             line_width = header_font.getlength(line)
             x = left + (cell_width - line_width) // 2
             y = top + padding + k * line_height
             draw.text((x, y), line, font=header_font, fill="black")
-    
+
     # Draw column headers
     if has_column_headers:
         header_row_idx = 0
@@ -483,24 +491,26 @@ def generate_table(
             if header is not None:
                 # Calculate position (account for row header if present)
                 col_offset = 1 if has_row_headers else 0
-                left = margin + sum(column_widths[:j + col_offset])
+                left = margin + sum(column_widths[: j + col_offset])
                 top = margin
                 cell_width = column_widths[j + col_offset]
                 cell_height = row_heights[header_row_idx]
-                
-                wrapped_text = wrap_text(header, header_font, cell_width - 2 * padding, wrap_mode)
+
+                wrapped_text = wrap_text(
+                    header, header_font, cell_width - 2 * padding, wrap_mode
+                )
                 ascent, descent = header_font.getmetrics()
                 line_height = ascent + descent
                 max_lines = (cell_height - 2 * padding) // line_height
                 truncated_text = wrapped_text[:max_lines]
-                
+
                 # Center the header
                 for k, line in enumerate(truncated_text):
                     line_width = header_font.getlength(line)
                     x = left + (cell_width - line_width) // 2
                     y = top + padding + k * line_height
                     draw.text((x, y), line, font=header_font, fill="black")
-    
+
     # Draw row headers
     if has_row_headers:
         header_col_idx = 0
@@ -509,23 +519,25 @@ def generate_table(
                 # Calculate position (account for column header if present)
                 row_offset = 1 if has_column_headers else 0
                 left = margin
-                top = margin + sum(row_heights[:i + row_offset])
+                top = margin + sum(row_heights[: i + row_offset])
                 cell_width = column_widths[header_col_idx]
                 cell_height = row_heights[i + row_offset]
-                
-                wrapped_text = wrap_text(header, header_font, cell_width - 2 * padding, wrap_mode)
+
+                wrapped_text = wrap_text(
+                    header, header_font, cell_width - 2 * padding, wrap_mode
+                )
                 ascent, descent = header_font.getmetrics()
                 line_height = ascent + descent
                 max_lines = (cell_height - 2 * padding) // line_height
                 truncated_text = wrapped_text[:max_lines]
-                
+
                 # Center the header
                 for k, line in enumerate(truncated_text):
                     line_width = header_font.getlength(line)
                     x = left + (cell_width - line_width) // 2
                     y = top + padding + k * line_height
                     draw.text((x, y), line, font=header_font, fill="black")
-    
+
     # Draw data cells
     for i in range(len(data)):
         for j in range(len(data[i])):
@@ -534,17 +546,19 @@ def generate_table(
                 # Calculate position (account for headers)
                 row_offset = 1 if has_column_headers else 0
                 col_offset = 1 if has_row_headers else 0
-                left = margin + sum(column_widths[:j + col_offset])
-                top = margin + sum(row_heights[:i + row_offset])
+                left = margin + sum(column_widths[: j + col_offset])
+                top = margin + sum(row_heights[: i + row_offset])
                 cell_width = column_widths[j + col_offset]
                 cell_height = row_heights[i + row_offset]
-                
-                wrapped_text = wrap_text(cell_value, font, cell_width - 2 * padding, wrap_mode)
+
+                wrapped_text = wrap_text(
+                    cell_value, font, cell_width - 2 * padding, wrap_mode
+                )
                 ascent, descent = font.getmetrics()
                 line_height = ascent + descent
                 max_lines = (cell_height - 2 * padding) // line_height
                 truncated_text = wrapped_text[:max_lines]
-                
+
                 # Regular cell text alignment (left-aligned)
                 for k, line in enumerate(truncated_text):
                     x = left + padding
@@ -562,10 +576,10 @@ def generate_table(
             output_dir = Path.cwd()
         else:
             output_dir = Path(output_dir)
-        
+
         # Ensure directories exist
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Create file paths
         image_path = output_dir / f"{output_filename}{FILE_EXTENSIONS['image']}"
         json_path = output_dir / f"{output_filename}{FILE_EXTENSIONS['json']}"
@@ -600,10 +614,10 @@ def generate_tables(
     large_number_probability: float = 0.05,
     column_header_probability: float = 0.0,
     row_header_probability: float = 0.0,
-    wrap_mode: str = "word"
+    wrap_mode: str = "word",
 ) -> List[Tuple[Path, Path]]:
     """Generate multiple tables with configurable parameters.
-    
+
     Args:
         count: Number of tables to generate
         output_dir: Directory to save output files. Defaults to current directory.
@@ -623,7 +637,7 @@ def generate_tables(
         column_header_probability: Probability of generating column headers (0.0-1.0)
         row_header_probability: Probability of generating row headers (0.0-1.0)
         wrap_mode: Text wrapping mode: "word" (default), "none", or "char"
-        
+
     Returns:
         List of tuples containing paths to the generated image and JSON files
     """
@@ -632,25 +646,25 @@ def generate_tables(
     else:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create separate directories for images and JSON files
     images_dir = output_dir / OUTPUT_DIRS["images"]
     json_dir = output_dir / OUTPUT_DIRS["json"]
-    
+
     images_dir.mkdir(parents=True, exist_ok=True)
     json_dir.mkdir(parents=True, exist_ok=True)
-        
+
     results = []
     for i in range(count):
         # Generate a unique filename for this table
-        filename = f"table_{i+1}" if count > 1 else "table"
-        
+        filename = f"table_{i + 1}" if count > 1 else "table"
+
         # Set up output paths directly
         output_paths = {
             "image": images_dir / f"{filename}{FILE_EXTENSIONS['image']}",
-            "json": json_dir / f"{filename}{FILE_EXTENSIONS['json']}"
+            "json": json_dir / f"{filename}{FILE_EXTENSIONS['json']}",
         }
-        
+
         # Generate the table with explicit output paths
         image_path, json_path = generate_table(
             min_rows=min_rows,
@@ -668,174 +682,9 @@ def generate_tables(
             column_header_probability=column_header_probability,
             row_header_probability=row_header_probability,
             wrap_mode=wrap_mode,
-            output_paths=output_paths
+            output_paths=output_paths,
         )
-        
+
         results.append((image_path, json_path))
-    
+
     return results
-
-
-def main() -> None:
-    """Generate table image and JSON data based on command-line arguments."""
-    parser = argparse.ArgumentParser(description="Generate random tables as PNG images and JSON data")
-    
-    parser.add_argument(
-        "--count", "-c", 
-        type=int, 
-        default=1, 
-        help="Number of tables to generate (default: 1)"
-    )
-    parser.add_argument(
-        "--min-rows", "-r", 
-        type=int, 
-        default=1, 
-        help="Minimum number of rows for each table (default: 1)"
-    )
-    parser.add_argument(
-        "--min-columns", "-m", 
-        type=int, 
-        default=1, 
-        help="Minimum number of columns for each table (default: 1)"
-    )
-    parser.add_argument(
-        "--max-rows", 
-        type=int, 
-        default=15, 
-        help="Maximum number of rows for each table (default: 15)"
-    )
-    parser.add_argument(
-        "--max-columns", 
-        type=int, 
-        default=40, 
-        help="Maximum number of columns for each table (default: 40)"
-    )
-    parser.add_argument(
-        "--output", "-o", 
-        type=str, 
-        default=None, 
-        help="Output directory (default: current directory)"
-    )
-    parser.add_argument(
-        "--normal",
-        action="store_true",
-        help="Generate normal tables with uniform cells and solid lines"
-    )
-    parser.add_argument(
-        "--random",
-        action="store_true",
-        help="Generate random tables with varied cells and mixed line styles"
-    )
-    parser.add_argument(
-        "--normal-probability",
-        type=float,
-        default=0.5,
-        help="Probability of generating normal tables when neither --normal nor --random is specified (default: 0.5)"
-    )
-    parser.add_argument(
-        "--margin",
-        type=int,
-        default=10,
-        help="Margin size in pixels around each table (default: 10)"
-    )
-    parser.add_argument(
-        "--empty-row-probability",
-        type=float,
-        default=0.5,
-        help="Probability of creating an empty row (default: 0.3)"
-    )
-    parser.add_argument(
-        "--empty-column-probability",
-        type=float,
-        default=0.5,
-        help="Probability of creating an empty column (default: 0.3)"
-    )
-    parser.add_argument(
-        "--empty-cell-probability",
-        type=float,
-        default=0.2,
-        help="Probability of any individual cell being empty (default: 0.2)"
-    )
-    parser.add_argument(
-        "--wrap-mode",
-        type=str,
-        default="word",
-        choices=["word", "char", "none"],
-        help="Text wrapping mode: word (default), char (break words), none (no wrapping)"
-    )
-    parser.add_argument(
-        "--large-number-probability",
-        type=float,
-        default=0.05,
-        help="Probability of generating very large numbers (15-30 digits) (default: 0.05)"
-    )
-    parser.add_argument(
-        "--column-header-probability",
-        type=float,
-        default=0.0,
-        help="Probability of generating column headers (default: 0.0)"
-    )
-    parser.add_argument(
-        "--row-header-probability",
-        type=float,
-        default=0.0,
-        help="Probability of generating row headers (default: 0.0)"
-    )
-    
-    args = parser.parse_args()
-    
-    output_dir = Path(args.output) if args.output else None
-    
-    # Handle normal/random options
-    is_normal = None  # Default: Use normal_probability
-    if args.normal and args.random:
-        print("Warning: Both --normal and --random specified; using normal_probability for randomization")
-    elif args.normal:
-        is_normal = True
-    elif args.random:
-        is_normal = False
-        
-    # Validate normal_probability is between 0 and 1
-    if not 0 <= args.normal_probability <= 1:
-        print(f"Warning: normal_probability ({args.normal_probability}) should be between 0 and 1; using 0.5")
-        args.normal_probability = 0.5
-    
-    results = generate_tables(
-        count=args.count,
-        min_rows=args.min_rows,
-        min_columns=args.min_columns,
-        max_rows=args.max_rows,
-        max_columns=args.max_columns,
-        output_dir=output_dir,
-        is_normal=is_normal,
-        normal_probability=args.normal_probability,
-        margin=args.margin,
-        empty_row_probability=args.empty_row_probability,
-        empty_column_probability=args.empty_column_probability,
-        empty_cell_probability=args.empty_cell_probability,
-        large_number_probability=args.large_number_probability,
-        column_header_probability=args.column_header_probability,
-        row_header_probability=args.row_header_probability,
-        wrap_mode=args.wrap_mode
-    )
-    
-    # Group results by directory for clearer output
-    if results:
-        images_dir = results[0][0].parent
-        json_dir = results[0][1].parent
-        
-        print(f"Generated {len(results)} tables:")
-        print(f"  Images saved in: {images_dir}")
-        print(f"  JSON data saved in: {json_dir}")
-        
-        for i, (image_path, json_path) in enumerate(results):
-            print(f"  Table {i+1}: {image_path.name}")
-            
-    # Clean up any temporary directories that might have been created
-    temp_dir = Path.cwd() / "temp"
-    if temp_dir.exists():
-        shutil.rmtree(temp_dir)
-
-
-if __name__ == "__main__":
-    main()
